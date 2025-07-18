@@ -8,7 +8,6 @@ using UnityEngine.InputSystem;
 public class PlayerStateMachine : MonoBehaviourPun
 {
     private PlayerControls _playerControls;
-    
     private float turnVelocity;
 
     [Header("Player Name")]
@@ -67,60 +66,55 @@ public class PlayerStateMachine : MonoBehaviourPun
     [HideInInspector] public bool isDashing = false;
 
     [Header("Inputs")]
-    // public variables for classes
     public Vector2 moveInput;
     public Vector3 velocity;
     public bool isJumpPressed;
     public bool isGrounded;
     public bool isAttacking;
 
-    /*----------------------------------------------------------------*/
     [Header("!!Testing_Parry!!")]
-    //temp variables for parry
     public bool isBlockHeld;
     public bool isBlockJustPressed;
     public bool isParryWindowOpen = false;
     public bool wasParried = false;
     private float parryWindowStartTime;
-    [SerializeField]private float parryWindowDuration = 0.5f;
-    /*----------------------------------------------------------------*/
+    [SerializeField] private float parryWindowDuration = 0.5f;
 
     private PlayerBaseState currentState;
     private PlayerStateFactory stateFactory;
 
+    // Audio tracking
+    private AudioClip lastBGMClip;
 
-    // ------------------------ Awake method ---------------------------
     void Awake()
     {
         InitializeControls();
         cam = Camera.main;
-        //animator.applyRootMotion = true;
         runtimeOverride = new AnimatorOverrideController(baseOverrideController);
         animator.runtimeAnimatorController = runtimeOverride;
 
-        // Set up attack maps
         SetUpAttackMaps();
-
         stateFactory = new PlayerStateFactory(this);
         currentState = stateFactory.Idle();
         currentState.EnterState();
 
-        // Photon Setup
         if (photonView.IsMine)
         {
             cam = Camera.main;
             enabled = true;
-            
         }
-        else 
+        else
         {
             enabled = false;
-        
         }
-        int targetLayer = photonView.IsMine ? LayerMask.NameToLayer("Player") : LayerMask.NameToLayer("Enemy");
 
+        int targetLayer = photonView.IsMine ? LayerMask.NameToLayer("Player") : LayerMask.NameToLayer("Enemy");
         SetLayerRecursively(gameObject, targetLayer);
+
+        // Initial BGM state
+        lastBGMClip = AudioManager.Instance?.bgmMenu;
     }
+
     void SetLayerRecursively(GameObject obj, int newLayer)
     {
         obj.layer = newLayer;
@@ -137,7 +131,6 @@ public class PlayerStateMachine : MonoBehaviourPun
         PlayerNameText.text = PlayerName;
     }
 
-    // ----------------- Setting up attack Maps -----------------------------
     void SetUpAttackMaps()
     {
         attackMap = new Dictionary<string, AttackData>();
@@ -148,23 +141,19 @@ public class PlayerStateMachine : MonoBehaviourPun
             attackMap[atk.inputActionName] = atk;
             cooldowns[atk.inputActionName] = 0f;
             var inputAction = _playerControls.Attack.Get().FindAction(atk.inputActionName);
-            //Debug.Log(_playerControls.Attack.Get().actions.ToString());
             if (inputAction != null)
                 inputAction.performed += ctx => OnAttackInput(atk);
-            else
-                Debug.LogWarning($"InputAction '{atk.inputActionName}' not found.");
         }
-        // Set up Atk Origins as well
+
         foreach (var entry in attackOrigins)
         {
             if (!attackOriginMap.ContainsKey(entry.originName))
                 attackOriginMap[entry.originName] = entry.originTransform;
         }
     }
-    // -------------------------- Attack Input manager -------------------------------
+
     private void OnAttackInput(AttackData atk)
     {
-        //Debug.Log("Hello");
         if (Time.time >= cooldowns[atk.inputActionName])
         {
             cooldowns[atk.inputActionName] = Time.time + atk.cooldown;
@@ -172,7 +161,6 @@ public class PlayerStateMachine : MonoBehaviourPun
         }
     }
 
-    //----------------------------------- Initialize controls -------------------------------------------
     void InitializeControls()
     {
         _playerControls = new PlayerControls();
@@ -180,7 +168,7 @@ public class PlayerStateMachine : MonoBehaviourPun
         _playerControls.Grab.GrabMouse.performed += OnGrabPressed;
         _playerControls.PowerUps.Shield.performed += ActivateShield;
         _playerControls.PowerUps.PullThroughAir.performed += ActivatePullThroughAir;
-        /*-------------------------------------------------------------------*/
+
         _playerControls.Parry.Parry.performed += ctx =>
         {
             isBlockHeld = true;
@@ -194,47 +182,39 @@ public class PlayerStateMachine : MonoBehaviourPun
         {
             isBlockHeld = false;
         };
-        /*-------------------------------------------------------------------*/
     }
-    /*------------------------------------------------------------------*/
 
-    private void HandleIncomingAttacks(GameObject attacker, GameObject target, AttackData data) 
+    private void HandleIncomingAttacks(GameObject attacker, GameObject target, AttackData data)
     {
         if (target != gameObject) return;
 
         wasParried = false;
-
         TriggerParryWindow();
 
-        if (isParryWindowOpen && isBlockJustPressed && !isBlockHeld) 
+        if (isParryWindowOpen && isBlockJustPressed && !isBlockHeld)
         {
             wasParried = true;
-            Debug.Log("Attack Parried");
         }
-
     }
+
     public void TriggerParryWindow()
     {
         parryWindowStartTime = Time.time;
         isParryWindowOpen = true;
-        
-
-        Debug.Log("Parry window triggered.");
     }
 
-    private void OnEnable() 
+    private void OnEnable()
     {
         AttackEvents.OnIncomingAttack += HandleIncomingAttacks;
         _playerControls.Enable();
     }
 
-    private void OnDisable() 
+    private void OnDisable()
     {
         AttackEvents.OnIncomingAttack -= HandleIncomingAttacks;
         _playerControls.Disable();
     }
 
-    /*-------------------------------------------------------------------*/
     void OnGrabPressed(InputAction.CallbackContext ctx)
     {
         isGrabbing = ctx.ReadValueAsButton();
@@ -242,61 +222,67 @@ public class PlayerStateMachine : MonoBehaviourPun
         {
             SwitchState(stateFactory.Grab());
         }
-
     }
+
     void ActivateShield(InputAction.CallbackContext ctx)
     {
-        SwitchState(stateFactory.PowerUp(PowerUpType.BubbleShield,bubbleShieldDuration));
+        SwitchState(stateFactory.PowerUp(PowerUpType.BubbleShield, bubbleShieldDuration));
     }
+
     void ActivatePullThroughAir(InputAction.CallbackContext ctx)
     {
         SwitchState(stateFactory.PowerUp(PowerUpType.PullThroughAir, airPullDuration));
     }
-    
-    /*----------------------hh-----------------------------*/
-    //void OnEnable() => _playerControls.Enable();
-    //void OnDisable() => _playerControls.Disable();
-    /*----------------------hh-----------------------------*/
 
-    
     void Update()
     {
         UpdateGroundStatus();
         ApplyGravity();
         HandleRotation();
         currentState.UpdateState();
+
         moveInput = _playerControls.Movement.Keyboard.ReadValue<Vector2>();
         if (isJumpPressed)
         {
             currentState.HandleJumpInput();
             isJumpPressed = false;
         }
-        /*---------------------------------------------------------------------------*/
+
         if (isParryWindowOpen)
         {
             float elapsed = Time.time - parryWindowStartTime;
-
             if (elapsed > parryWindowDuration)
             {
                 isParryWindowOpen = false;
             }
             else if (isBlockJustPressed)
             {
-                
-                Debug.Log("Perfect parry!");
                 SwitchState(stateFactory.ParrySub());
                 isParryWindowOpen = false;
-            }
-            else if (isBlockHeld)
-            {
-                
-                Debug.Log("Blocking — parry not triggered");
             }
         }
 
         isBlockJustPressed = false;
-        /*----------------------------------------------------------------------------*/
-       
+
+        // ðŸ”Š AUDIO MANAGEMENT
+        if (photonView.IsMine && moveInput.magnitude > 0.1f && !isAttacking)
+        {
+            AudioClip walkingClip = AudioManager.Instance?.walkSound;
+            if (walkingClip != null && lastBGMClip != walkingClip)
+            {
+                AudioManager.Instance.PlayBGM(walkingClip);
+                lastBGMClip = walkingClip;
+            }
+        }
+        else
+        {
+            AudioClip inGameClip = AudioManager.Instance?.bgmInGame;
+            if (inGameClip != null && lastBGMClip != inGameClip)
+            {
+                AudioManager.Instance.PlayBGM(inGameClip);
+                lastBGMClip = inGameClip;
+            }
+        }
     }
 
     public void SwitchState(PlayerBaseState newState)
@@ -305,11 +291,9 @@ public class PlayerStateMachine : MonoBehaviourPun
         currentState = newState;
         newState.EnterState();
     }
-    
-    // ------------------ Basic physics and camera -------------------------------
+
     public void HandleRotation()
     {
-        
         Vector3 direction = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
         if (direction.magnitude >= 0.1f)
         {
@@ -325,6 +309,7 @@ public class PlayerStateMachine : MonoBehaviourPun
         Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
         return moveDir.normalized;
     }
+
     void UpdateGroundStatus()
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, gLayer);
@@ -339,11 +324,10 @@ public class PlayerStateMachine : MonoBehaviourPun
         characterController.Move(velocity * Time.deltaTime);
     }
 
-
-    //--------------------------- Animation Events Refrences ------------------------------------
     public void ApplyJumpVelocity()
     {
         velocity.y = Mathf.Sqrt(-2f * gravity * jumpHeight);
+        AudioManager.Instance?.PlayJump();
     }
 
     public void ApplyAttackDamage()
@@ -358,8 +342,6 @@ public class PlayerStateMachine : MonoBehaviourPun
             SwitchState(stateFactory.Idle());
     }
 
-
-    // --------------------------------------- Power Ups -------------------------------------
     public void EnableShield(bool active)
     {
         isShieldActive = active;
@@ -371,20 +353,17 @@ public class PlayerStateMachine : MonoBehaviourPun
 
     public void PullPlayerThroughAir()
     {
-        if (isDashing) return; // Prevent overlapping
+        if (isDashing) return;
 
         Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
         if (inputDirection == Vector3.zero)
-        {
             inputDirection = Vector3.forward;
-            
-        }
-            
-        
+
         Vector3 moveDir = GetMoveDirection(inputDirection);
         transform.rotation = Quaternion.LookRotation(moveDir);
         StartCoroutine(PerformAirPull(moveDir));
     }
+
     private IEnumerator PerformAirPull(Vector3 direction)
     {
         isDashing = true;
@@ -393,14 +372,11 @@ public class PlayerStateMachine : MonoBehaviourPun
         Vector3 start = transform.position;
         Vector3 target = start + direction * airPullDistance;
 
-        // Disable gravity while pulling (optional)
         bool wasGrounded = isGrounded;
         velocity.y = 0f;
-        
 
         while (elapsed < airPullDuration)
         {
-            
             float t = elapsed / airPullDuration;
             Vector3 newPosition = Vector3.Lerp(start, target, t);
             Vector3 delta = newPosition - transform.position;
@@ -410,16 +386,17 @@ public class PlayerStateMachine : MonoBehaviourPun
             yield return null;
         }
 
-        // Final move in case of small gap
         Vector3 finalDelta = target - transform.position;
         characterController.Move(finalDelta);
 
         isDashing = false;
 
-        // Restore downward velocity
         if (!wasGrounded)
             velocity.y = 0f;
     }
 
-
+    public void ForceGroundCheck()
+    {
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, gLayer);
+    }
 }

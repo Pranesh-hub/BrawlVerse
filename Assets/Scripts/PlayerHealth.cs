@@ -1,25 +1,37 @@
-using System.Collections;
-using Photon.Pun;
-using Photon.Pun.Demo.PunBasics;
 using UnityEngine;
+using UnityEngine.UI;
+using Photon.Pun;
+using System.Collections;
 
 public class PlayerHealth : MonoBehaviourPun
 {
     public float health = 100f;
-    public PlayerStateMachine _playerStateMachine;  // Reference to your existing shield script
+    public float maxHealth = 100f;
+
+    [Header("UI References")]
+    public Slider healthSlider; // Assign via Inspector or Find in children
+
+    public PlayerStateMachine _playerStateMachine;
     public bool isLocalPlayer;
+
+    private KillDeathTracker killDeathTracker;
+
     void Start()
     {
         if (_playerStateMachine == null)
-        {
-            _playerStateMachine = GetComponent<PlayerStateMachine>(); // Try auto-assign if on same object
-        }
+            _playerStateMachine = GetComponent<PlayerStateMachine>();
+
+        killDeathTracker = GetComponent<KillDeathTracker>();
+
+        if (healthSlider == null)
+            healthSlider = GetComponentInChildren<Slider>();
+
+        UpdateHealthUI();
     }
 
     [PunRPC]
-    public void TakeDamage(int damageAmount)
+    public void TakeDamage(int damageAmount, int attackerViewID)
     {
-        // If shield active, ignore damage
         if (_playerStateMachine != null && _playerStateMachine.isShieldActive)
         {
             Debug.Log("Shield is active! No damage taken.");
@@ -27,15 +39,40 @@ public class PlayerHealth : MonoBehaviourPun
         }
 
         health -= damageAmount;
+        health = Mathf.Clamp(health, 0, maxHealth);
+
+        UpdateHealthUI();
+
         Debug.Log("Player health: " + health);
 
         if (health <= 0)
         {
             Debug.Log("Player died!");
+
+            if (photonView.IsMine && killDeathTracker != null)
+                killDeathTracker.AddDeath();
+
+            PhotonView attackerView = PhotonView.Find(attackerViewID);
+            if (attackerView != null && attackerView.IsMine && attackerView.gameObject != this.gameObject)
+            {
+                var attackerKD = attackerView.GetComponent<KillDeathTracker>();
+                if (attackerKD != null)
+                    attackerKD.AddKill();
+            }
+
             Die();
-            if (isLocalPlayer) RoomManager.Instance.SpawnPlayer();
-            Destroy(gameObject);
+
+            if (isLocalPlayer)
+            {
+                RoomManager.Instance.SpawnPlayer();
+            }    
         }
+    }
+
+    void UpdateHealthUI()
+    {
+        if (healthSlider != null)
+            healthSlider.value = (health / maxHealth) * 100f;
     }
 
     void Die()
@@ -43,14 +80,23 @@ public class PlayerHealth : MonoBehaviourPun
         if (photonView.IsMine)
         {
             StartCoroutine(RespawnAfterDelay(5f));
-            if(gameObject != null ) PhotonNetwork.Destroy(gameObject);
-            
+            PhotonNetwork.Destroy(gameObject);
         }
     }
 
     IEnumerator RespawnAfterDelay(float delay)
     {
-        yield return new WaitForSeconds(delay);
-        FindObjectOfType<RoomManager>().SpawnPlayer();
+        if (GameTimerPUN.Instance != null && GameTimerPUN.Instance.isGameOver)
+        {
+            Debug.Log("Game over -- no respawn.");
+            yield break;
+        }
+
+        if (GameTimerPUN.Instance != null && !GameTimerPUN.Instance.isGameOver)
+        {
+            RoomManager.Instance.SpawnPlayer();
+        }
+
+        yield return null;
     }
 }

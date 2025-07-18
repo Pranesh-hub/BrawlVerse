@@ -51,5 +51,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "BrawlVerse.sln"
+    "dotnet.defaultSolution": "BrawlVerse1.sln"
 }

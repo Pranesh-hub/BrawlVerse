@@ -9,10 +9,13 @@ public class EnemyAI : MonoBehaviour
     public float fallThreshold = -10f;
     public Vector2 respawnAreaX = new Vector2(-5f, 5f);
     public Vector2 respawnAreaZ = new Vector2(-5f, 5f);
+    public int health = 100;
 
     private NavMeshAgent agent;
     private Rigidbody rb;
     private bool isKnockedBack = false;
+
+    private GameObject lastHitBy; // 🔥 Track who last hit this enemy
 
     void Start()
     {
@@ -30,14 +33,12 @@ public class EnemyAI : MonoBehaviour
 
     void Update()
     {
-        // Respawn if bot falls off
         if (transform.position.y < fallThreshold)
         {
             Respawn();
             return;
         }
 
-        // Follow player
         if (!isKnockedBack && player != null)
         {
             agent.SetDestination(player.position);
@@ -46,7 +47,6 @@ public class EnemyAI : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        // Push the player on contact
         if (collision.gameObject.CompareTag("Player"))
         {
             Vector3 pushDir = (collision.transform.position - transform.position).normalized;
@@ -74,7 +74,6 @@ public class EnemyAI : MonoBehaviour
 
     void Respawn()
     {
-        // Random respawn position within range
         float x = Random.Range(respawnAreaX.x, respawnAreaX.y);
         float z = Random.Range(respawnAreaZ.x, respawnAreaZ.y);
         transform.position = new Vector3(x, 3f, z);
@@ -83,12 +82,39 @@ public class EnemyAI : MonoBehaviour
         rb.angularVelocity = Vector3.zero;
         isKnockedBack = false;
         agent.enabled = true;
+        health = 100;
     }
 
-    // Optional: call this from your player's attack code
-    public void OnHitByPlayer(Vector3 direction, float force)
+    /// <summary>
+    /// Called by the player's attack logic
+    /// </summary>
+    public void OnHitByPlayer(Vector3 direction, float force, int damage = 10, GameObject attacker = null)
     {
         Knockback(direction.normalized * force);
+        health -= damage;
+        lastHitBy = attacker;
+
+        Debug.Log($"Enemy took {damage} damage from {attacker?.name}, health = {health}");
+
+        if (health <= 0)
+        {
+            Die();
+        }
+    }
+
+    void Die()
+    {
+        Debug.Log("Enemy died");
+
+        if (lastHitBy != null)
+        {
+            KillDeathTracker tracker = lastHitBy.GetComponent<KillDeathTracker>();
+            if (tracker != null)
+            {
+                tracker.AddKill();
+            }
+        }
+
+        Destroy(gameObject); // Or optionally Respawn();
     }
 }
-
