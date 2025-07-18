@@ -20,6 +20,7 @@ public class AudioManager : MonoBehaviour
     public AudioClip deathSound;
     public AudioClip pushSound;
     public AudioClip headbuttSound;
+    public AudioClip hitSound;
     private AudioSource bgmSource;
     private AudioSource sfxSource;
 
@@ -80,6 +81,7 @@ public class AudioManager : MonoBehaviour
     public void PlayHeadbutt() => PlaySFX(headbuttSound);
     public void PlayKill() => PlaySFX(killSound);
     public void PlayDeath() => PlaySFX(deathSound);
+    public void playhit() => PlaySFX(hitSound);
     public void PlayGameOverWin() => PlayBGM(bgmWin);
     public void PlayGameOverLose() => PlayBGM(bgmLose);
 }

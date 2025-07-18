@@ -1,30 +1,11 @@
 using Photon.Pun;
+using Photon.Pun.UtilityScripts;
 using Photon.Realtime;
 using UnityEngine;
 
 public class KillDeathTracker : MonoBehaviourPun
 {
-    public int kills = 0;
     public int deaths = 0;
-
-    private const string KILLS_KEY = "Kills";
-
-    void Start()
-    {
-        if (photonView.IsMine)
-        {
-            UpdateKillProperty(0); // Initialize
-        }
-    }
-
-    public void AddKill()
-    {
-        if (photonView.IsMine)
-        {
-            kills++;
-            UpdateKillProperty(kills);
-        }
-    }
 
     public void AddDeath()
     {
@@ -34,19 +15,18 @@ public class KillDeathTracker : MonoBehaviourPun
         }
     }
 
-    private void UpdateKillProperty(int value)
+    [PunRPC]
+    public void RPC_RewardKill()
     {
-        ExitGames.Client.Photon.Hashtable hash = new ExitGames.Client.Photon.Hashtable();
-        hash[KILLS_KEY] = value;
-        PhotonNetwork.LocalPlayer.SetCustomProperties(hash);
+        if (photonView.IsMine)
+        {
+            PhotonNetwork.LocalPlayer.AddScore(1);
+            Debug.Log("Kill rewarded. Current score: " + PhotonNetwork.LocalPlayer.GetScore());
+        }
     }
 
     public static int GetKills(Player player)
     {
-        if (player.CustomProperties.ContainsKey(KILLS_KEY))
-        {
-            return (int)player.CustomProperties[KILLS_KEY];
-        }
-        return 0;
+        return player.GetScore();
     }
 }

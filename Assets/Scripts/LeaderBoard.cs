@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Photon.Pun;
+using Photon.Pun.UtilityScripts;
 using TMPro;
 using Photon.Realtime;
 using UnityEngine;
@@ -34,7 +35,7 @@ public class LeaderBoard : MonoBehaviour
 
     private void Start()
     {
-        playersHolder.SetActive(false); // hide on game start
+        playersHolder.SetActive(false);
         InvokeRepeating(nameof(Refresh), 1f, refreshRate);
     }
 
@@ -57,8 +58,8 @@ public class LeaderBoard : MonoBehaviour
             slot.SetActive(false);
 
         var sorted = PhotonNetwork.PlayerList
-            .OrderByDescending(p => KillDeathTracker.GetKills(p))
-            .ThenBy(p => p.ActorNumber)
+            .OrderByDescending(p => p.GetScore())
+            .ThenBy(p => p.NickName)
             .ToList();
 
         for (int i = 0; i < sorted.Count && i < slots.Length; i++)
@@ -66,9 +67,8 @@ public class LeaderBoard : MonoBehaviour
             Player p = sorted[i];
 
             slots[i].SetActive(true);
-
             nameTexts[i].text = string.IsNullOrEmpty(p.NickName) ? "unnamed" : p.NickName;
-            scoreTexts[i].text = KillDeathTracker.GetKills(p).ToString();
+            scoreTexts[i].text = p.GetScore().ToString();
 
             Color color = i == 0 ? gold : i == 1 ? silver : i == 2 ? bronze : normal;
             nameTexts[i].color = color;
@@ -85,7 +85,6 @@ public class LeaderBoard : MonoBehaviour
     public void ActivateDuringGame()
     {
         allowTabToggle = true;
-        playersHolder.SetActive(false); // hide initially, Tab will show
+        playersHolder.SetActive(false); // Initially hidden
     }
-
 }

@@ -72,7 +72,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
 
         // Step 3: Adjust position using raycast to snap to ground
-        if (Physics.Raycast(spanPoint.position, Vector3.down, out RaycastHit hit, 10f))
+        if (Physics.Raycast(_player.transform.position + Vector3.up, Vector3.down, out RaycastHit hit, 10f))
         {
             CharacterController cc = _player.GetComponent<CharacterController>();
             if (cc != null)

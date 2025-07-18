@@ -28,6 +28,11 @@ public class PlayerAttackState : PlayerBaseState
 
     public void ApplyDamage()
     {
+        if (!GameTimerPUN.isGameStarted)
+        {
+            Debug.Log("Damage prevented — game hasn't started.");
+            return;
+        }
         if (!ctx.attackOriginMap.TryGetValue(data.AttackOriginName, out var origin))
         {
             Debug.LogWarning($"No attack origin found for '{data.AttackOriginName}'. Using player transform as fallback.");
@@ -56,8 +61,7 @@ public class PlayerAttackState : PlayerBaseState
 
                 if (targetView != null && attackerView != null)
                 {
-                    int attackerID = attackerView.ViewID;
-                    targetView.RPC("TakeDamage", RpcTarget.All, data.damage, attackerID);
+                    targetView.RPC("TakeDamage", RpcTarget.All, data.damage, attackerView.ViewID);
                 }
             }
 
@@ -74,29 +78,17 @@ public class PlayerAttackState : PlayerBaseState
             }
         }
     }
+
     private void PlayAttackSound(string attack)
     {
         switch (attack.ToLower())
         {
-            case "kick":
-                AudioManager.Instance?.PlayKick();
-                break;
-            case "stomp":
-                AudioManager.Instance?.PlayStomp();
-                break;
-            case "uppercut":
-                AudioManager.Instance?.PlayUppercut();
-                break;
-            case "push":
-                AudioManager.Instance?.PlayPush();
-                break;
-            case "headbutt":
-                AudioManager.Instance?.PlayHeadbutt();
-                break;
-            default:
-                Debug.Log($"[Audio] No sound mapped for attack: {attack}");
-                break;
+            case "kick": AudioManager.Instance?.PlayKick(); break;
+            case "stomp": AudioManager.Instance?.PlayStomp(); break;
+            case "uppercut": AudioManager.Instance?.PlayUppercut(); break;
+            case "push": AudioManager.Instance?.PlayPush(); break;
+            case "headbutt": AudioManager.Instance?.PlayHeadbutt(); break;
+            default: Debug.Log($"[Audio] No sound mapped for attack: {attack}"); break;
         }
     }
-
 }

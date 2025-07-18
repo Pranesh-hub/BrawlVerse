@@ -111,7 +111,7 @@ public class EnemyAI : MonoBehaviour
             KillDeathTracker tracker = lastHitBy.GetComponent<KillDeathTracker>();
             if (tracker != null)
             {
-                tracker.AddKill();
+                tracker.RPC_RewardKill();
             }
         }
 
