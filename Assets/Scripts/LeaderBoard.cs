@@ -1,9 +1,10 @@
+using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Linq;
 using Photon.Pun;
 using TMPro;
 using Photon.Realtime;
+using UnityEngine;
 
 public class LeaderBoard : MonoBehaviour
 {
@@ -33,6 +34,7 @@ public class LeaderBoard : MonoBehaviour
 
     private void Start()
     {
+        playersHolder.SetActive(false); // hide on game start
         InvokeRepeating(nameof(Refresh), 1f, refreshRate);
     }
 
@@ -55,32 +57,23 @@ public class LeaderBoard : MonoBehaviour
             slot.SetActive(false);
 
         var sorted = PhotonNetwork.PlayerList
-            .OrderByDescending(p => GetKills(p))
-            .ThenBy(p => GetDeaths(p))
+            .OrderByDescending(p => KillDeathTracker.GetKills(p))
+            .ThenBy(p => p.ActorNumber)
             .ToList();
 
         for (int i = 0; i < sorted.Count && i < slots.Length; i++)
         {
-            var player = sorted[i];
+            Player p = sorted[i];
 
             slots[i].SetActive(true);
-            nameTexts[i].text = string.IsNullOrEmpty(player.NickName) ? "unnamed" : player.NickName;
-            scoreTexts[i].text = GetKills(player).ToString(); // Display kills only
 
-            Color rankColor = i == 0 ? gold : i == 1 ? silver : i == 2 ? bronze : normal;
-            nameTexts[i].color = rankColor;
-            scoreTexts[i].color = rankColor;
+            nameTexts[i].text = string.IsNullOrEmpty(p.NickName) ? "unnamed" : p.NickName;
+            scoreTexts[i].text = KillDeathTracker.GetKills(p).ToString();
+
+            Color color = i == 0 ? gold : i == 1 ? silver : i == 2 ? bronze : normal;
+            nameTexts[i].color = color;
+            scoreTexts[i].color = color;
         }
-    }
-
-    private int GetKills(Player p)
-    {
-        return p.CustomProperties.TryGetValue("Kills", out object val) ? (int)val : 0;
-    }
-
-    private int GetDeaths(Player p)
-    {
-        return p.CustomProperties.TryGetValue("Deaths", out object val) ? (int)val : 0;
     }
 
     private void Update()
@@ -88,4 +81,11 @@ public class LeaderBoard : MonoBehaviour
         if (allowTabToggle)
             playersHolder.SetActive(Input.GetKey(KeyCode.Tab));
     }
+
+    public void ActivateDuringGame()
+    {
+        allowTabToggle = true;
+        playersHolder.SetActive(false); // hide initially, Tab will show
+    }
+
 }

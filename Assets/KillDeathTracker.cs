@@ -1,49 +1,52 @@
 using Photon.Pun;
-using Photon.Pun.UtilityScripts;
 using Photon.Realtime;
 using UnityEngine;
 
-public class KillDeathTracker : MonoBehaviourPunCallbacks
+public class KillDeathTracker : MonoBehaviourPun
 {
-    public int kills;
-    public int deaths;
+    public int kills = 0;
+    public int deaths = 0;
 
-    private void Start()
+    private const string KILLS_KEY = "Kills";
+
+    void Start()
     {
         if (photonView.IsMine)
         {
-            ResetStats();
+            UpdateKillProperty(0); // Initialize
         }
     }
 
     public void AddKill()
     {
-        kills++;
-        UpdatePlayerProps();
+        if (photonView.IsMine)
+        {
+            kills++;
+            UpdateKillProperty(kills);
+        }
     }
 
     public void AddDeath()
     {
-        deaths++;
-        UpdatePlayerProps();
-    }
-
-    private void ResetStats()
-    {
-        kills = 0;
-        deaths = 0;
-        UpdatePlayerProps();
-    }
-
-    private void UpdatePlayerProps()
-    {
         if (photonView.IsMine)
         {
-            ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
-            props["Kills"] = kills;
-            props["Deaths"] = deaths;
-            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-            PhotonNetwork.LocalPlayer.AddScore(kills); // optional: sync score to kills
+            deaths++;
         }
+    }
+
+    private void UpdateKillProperty(int value)
+    {
+        ExitGames.Client.Photon.Hashtable hash = new ExitGames.Client.Photon.Hashtable();
+        hash[KILLS_KEY] = value;
+        PhotonNetwork.LocalPlayer.SetCustomProperties(hash);
+    }
+
+    public static int GetKills(Player player)
+    {
+        if (player.CustomProperties.ContainsKey(KILLS_KEY))
+        {
+            return (int)player.CustomProperties[KILLS_KEY];
+        }
+        return 0;
     }
 }

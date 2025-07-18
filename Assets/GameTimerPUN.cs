@@ -28,6 +28,7 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log("[GameTimer] Joined Room. Starting timer...");
+        LeaderBoard.Instance?.ActivateDuringGame();
         StartCoroutine(StartCountdown());
     }
 
