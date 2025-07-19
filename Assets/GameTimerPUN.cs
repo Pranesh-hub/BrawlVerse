@@ -24,11 +24,13 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
     public TextMeshProUGUI timerTextUI;
     public TextMeshProUGUI playerCountText;
     public Button startGameButton;
-    public TextMeshProUGUI preGameCountdownText; // ✅ NEW: UI text for 5-4-3-2-1-BATTLE!
+    public TextMeshProUGUI preGameCountdownText;
 
     private Color defaultColor = Color.white;
     private Color warningColor = Color.yellow;
     private Color dangerColor = new Color(0.8f, 0f, 0f);
+
+    private const float preCountdownDuration = 5f;
 
     private void Awake()
     {
@@ -39,7 +41,7 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
             timerTextUI.gameObject.SetActive(false);
 
         if (preGameCountdownText != null)
-            preGameCountdownText.gameObject.SetActive(false); // ✅ Initially off
+            preGameCountdownText.gameObject.SetActive(false);
     }
 
     public override void OnJoinedRoom()
@@ -76,7 +78,7 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
         {
             Debug.Log("Auto-starting game (3 or more players joined).");
             ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
-            props["startTime"] = PhotonNetwork.Time;
+            props["startTime"] = PhotonNetwork.Time + preCountdownDuration;
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         }
     }
@@ -99,7 +101,7 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
         {
             Debug.Log("Manually starting game by MasterClient.");
             ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
-            props["startTime"] = PhotonNetwork.Time;
+            props["startTime"] = PhotonNetwork.Time + preCountdownDuration;
             PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         }
 
@@ -115,10 +117,18 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
         if (startGameButton != null)
             startGameButton.gameObject.SetActive(false);
 
-        // ✅ Show 5..4..3..2..1..BATTLE! before timer starts
-        yield return StartCoroutine(ShowPreGameCountdown());
-
         double startTime = (double)PhotonNetwork.CurrentRoom.CustomProperties["startTime"];
+        double countdownStartTime = startTime - preCountdownDuration;
+        double now = PhotonNetwork.Time;
+
+        if (now < countdownStartTime)
+        {
+            yield return new WaitForSeconds((float)(countdownStartTime - now));
+        }
+
+        yield return StartCoroutine(ShowPreGameCountdown((float)(startTime - PhotonNetwork.Time)));
+
+        // Start actual game timer
         double endTime = startTime + countdownTime;
         isGameStarted = true;
 
@@ -151,8 +161,7 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
         ShowLeaderboardInConsole();
     }
 
-    // ✅ NEW: Pre-Game Countdown Coroutine
-    private IEnumerator ShowPreGameCountdown()
+    private IEnumerator ShowPreGameCountdown(float waitSeconds)
     {
         if (preGameCountdownText == null)
         {
@@ -162,7 +171,8 @@ public class GameTimerPUN : MonoBehaviourPunCallbacks
 
         preGameCountdownText.gameObject.SetActive(true);
 
-        for (int i = 5; i > 0; i--)
+        int wholeSeconds = Mathf.FloorToInt(waitSeconds);
+        for (int i = wholeSeconds; i > 0; i--)
         {
             preGameCountdownText.text = i.ToString();
             yield return new WaitForSeconds(1f);
