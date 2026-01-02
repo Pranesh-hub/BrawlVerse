@@ -40,7 +40,7 @@ This project was completed as part of the **Summer Project ’25 “BrawlVerse�
 
 ---
 
-## 🛠 Tools & Technologies
+## Tools & Technologies
 
 - **Unity**
 - **C#**
